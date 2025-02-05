@@ -15,27 +15,27 @@ global {
 	field cell <- field(300, 300);
 	graph road_network;
 	map<road, float> road_weights;
-	
-	
-	
-	float blue_collective_play <- 0.5 min:0.0 max:1.0;
+	int carros <- 150 min: 0 max: 800;
+	int buses <- 10 min: 0 max: 800;
+	int motos <- 100 min: 0 max: 800;
+	float avg_pollution <- 0.0;
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	// Bloque de inicialización del modelo. Se ejecuta una sola vez al inicio de la simulación
 	init {
 		create building from: building_shapefile;
 		create road from: road_shapefile;
-		create people number: 200 {
+		create people number: carros {
 			location <- any_location_in(one_of(building));
 			state <- flip(0.75) ? "ok" : "notok";
 		}
 
 		// Creacion de transportes en ubicaciones iniciales
-		create transporte_publico number: 10 {
+		create transporte_publico number: buses {
 			location <- any_location_in(one_of(road));
 		}
 
-		create moto number: 50 {
+		create moto number: motos {
 			location <- any_location_in(one_of(road)); // Se crean en cualquier punto de la carretera
 		}
 
@@ -55,6 +55,17 @@ global {
 		cell <- cell * 0.8;
 		diffuse var: pollution on: cell proportion: 0.9;
 	}
+
+	reflex compute_avg_pollution {
+		avg_pollution <- mean(cell);
+		//write "Promedio de contaminacion: " + avg_pollution;
+		avg_pollution <- floor(avg_pollution * 10000) / 10000; // Truncar a 4 decimales
+	}
+	
+
+
+	////////////////////
+
 
 	///////////////////////////////////////////////////////////////
 }
@@ -176,26 +187,30 @@ species moto skills: [moving] {
 
 		// Aspecto visual de la moto
 	aspect default {
-		draw rectangle(3, 8) rotated_by (heading + 90) color: #black depth: 3;
-		draw rectangle(2, 6) rotated_by (heading + 90) color: #gray depth: 4;
+		draw rectangle(3, 8) rotated_by (heading + 90) color: #lightgreen depth: 3;
+		draw rectangle(2, 6) rotated_by (heading + 90) color: #lightgreen depth: 4;
 	} }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-experiment traffic type: gui autorun: true {
-	
-	
-	parameter "blue collective play" var:blue_collective_play category:"Blue Team";
-	
+experiment traffic type: gui {
+	parameter "Carros" var: carros category: "Agentes" min: 0 max: 800;
+	parameter "Buses" var: buses category: "Agentes" min: 0 max: 800;
+	parameter "Motos" var: motos category: "Agentes" min: 0 max: 800;
 	float minimum_cycle_duration <- 0.01;
 	list<rgb> pal <- palette([#black, #green, #yellow, #orange, #orange, #red, #red, #red]);
 	map<rgb, string> pollutions <- [#green::"Good", #yellow::"Average", #orange::"Bad", #red::"Hazardous"];
-	map<rgb, string> legends <- [rgb(darker(#darkgray).darker)::"Buildings", rgb(#dodgerblue)::"Cars", rgb(#white)::"Roads"];
+	map<rgb, string> legends <- [rgb(darker(#darkgray).darker)::"Buildings", rgb(#dodgerblue)::"Carros", rgb(#red)::"Buses", rgb(#lightgreen)::"Motos", rgb(#white)::"Roads"];
 	font text <- font("Arial", 14, #bold);
 	font title <- font("Arial", 18, #bold);
 	output synchronized: true {
 		display carte type: 3d axes: false background: rgb(50, 50, 50) fullscreen: false toolbar: false {
 			overlay position: {50 #px, 50 #px} size: {1 #px, 1 #px} background: #black border: #black rounded: false {
+				
+				
 				draw "Pollution" at: {0, 0} anchor: #top_left color: #white font: title;
+				draw "Promedio de Contaminacion: " + avg_pollution at: {3000, 100} color: #white font: title;
+				draw "Tiempo transcurrido: " + total_duration + " ms" at: {3000, 200} color: #white font: title;
+				
 				float y <- 50 #px;
 				draw rectangle(40 #px, 160 #px) at: {20 #px, y + 60 #px} wireframe: true color: #white;
 				loop p over: reverse(pollutions.pairs) {
